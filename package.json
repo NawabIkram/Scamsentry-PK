@@ -1,0 +1,24 @@
+{
+  "name": "scamsentry-pk",
+  "version": "1.0.0",
+  "description": "ScamSentry PK - AI-Powered Digital Scam Detection & Community Intelligence Platform",
+  "main": "index.js",
+  "scripts": {
+    "install-all": "npm install && npm install --prefix server && npm install --prefix client",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "build": "npm run build --prefix client"
+  },
+  "keywords": [
+    "scam-detection",
+    "security",
+    "mern",
+    "pakistan"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
