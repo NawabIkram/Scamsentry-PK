@@ -32,6 +32,15 @@ const reportService = {
   },
 
   /**
+   * Trigger/Re-run AI threat analysis for a report
+   * @param {string} id - Report ID
+   */
+  analyzeReport: async (id) => {
+    const response = await api.post(`/reports/${id}/analyze`);
+    return response.data;
+  },
+
+  /**
    * Delete a scam report
    * @param {string} id - Report ID
    */
