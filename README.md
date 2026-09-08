@@ -23,13 +23,20 @@ ScamSentry PK is a community-driven, AI-ready threat intelligence platform desig
 - **Interactive Re-Scan & Automated Triggers**: Auto-triggers threat evaluation on report creation (`POST /api/reports`) and provides an on-demand re-scan endpoint (`POST /api/reports/:id/analyze`) with an interactive UI trigger button.
 - **Zero-Config In-Memory DB Fallback**: Integrated `mongodb-memory-server` to automatically spin up a local in-memory MongoDB database whenever a local MongoDB service is unavailable.
 
+### 🛡️ Phase 3 (Threat & Community Intelligence)
+- **Google Safe Browsing URL Checker**: Integrates Google Safe Browsing API v4 for threat lookup with an offline domain scanner fallback detecting high-risk TLDs (`.xyz`, `.top`, `.click`), direct IP hosts, and brand impersonation.
+- **Vector Similarity & Duplicate Pattern Matching**: Computes text token vectors and Jaccard similarity indices to match recurring scam campaign payloads and identify duplicate reports.
+- **Searchable Public Community Threat Feed**: Public API (`GET /api/reports/public`) and landing page feed enabling users to search suspicious messages, phishing links, and IBANs across community reports.
+- **Similar Scam Matches & Safety Badges**: Real-time display of Google Safe Browsing verification status and similar report match percentages (e.g. `95% Match`).
+- **Admin Moderation Workflows**: Real-time moderation action controls (`Verify`, `Flag`, `Reject`) in the Admin Overwatch Command Center (`PATCH /api/admin/reports/:id/status`).
+
 ---
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: React 19, Vite, Tailwind CSS v3, React Router DOM v6, Axios, Lucide React, Framer Motion
 - **Backend**: Node.js, Express.js, MongoDB (Mongoose), `mongodb-memory-server`
-- **AI & ML**: Google Gemini API (`@google/genai`), Heuristic Pattern Engine
+- **AI & Threat Intelligence**: Google Gemini API (`@google/genai`), Google Safe Browsing API v4, Vector Similarity Engine, Heuristic Pattern Engine
 - **Security**: bcryptjs, jsonwebtoken, express-validator, helmet, CORS
 - **Storage**: Cloudinary, Multer (Memory Storage)
 
@@ -41,6 +48,7 @@ ScamSentry PK is a community-driven, AI-ready threat intelligence platform desig
 - MongoDB (Local instance, Atlas URI, or automatic In-Memory fallback)
 - Cloudinary Account (for image evidence uploads)
 - Google Gemini API Key (Optional: Heuristic fallback engine will run automatically if omitted)
+- Google Safe Browsing API Key (Optional: Offline domain risk scanner will run automatically if omitted)
 
 ---
 
@@ -64,6 +72,9 @@ CLOUDINARY_API_SECRET=your_api_secret
 
 # Google Gemini AI Config (Optional)
 GEMINI_API_KEY=your_gemini_api_key
+
+# Google Safe Browsing Config (Optional)
+GOOGLE_SAFE_BROWSING_API_KEY=your_google_safe_browsing_api_key
 ```
 
 ### `client/.env`
