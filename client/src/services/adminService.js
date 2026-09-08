@@ -18,6 +18,16 @@ const adminService = {
   },
 
   /**
+   * Update scam report status (Admin Moderation)
+   * @param {string} id - Report ID
+   * @param {string} status - New status ('verified', 'flagged', 'rejected', 'analyzed')
+   */
+  updateReportStatus: async (id, status) => {
+    const response = await api.patch(`/admin/reports/${id}/status`, { status });
+    return response.data;
+  },
+
+  /**
    * Fetch all registered users in the system
    */
   getUsers: async () => {

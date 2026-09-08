@@ -6,7 +6,19 @@ import Loader from '../components/common/Loader';
 import StatusBadge from '../components/common/StatusBadge';
 import GlassCard from '../components/ui/GlassCard';
 import AnimatedCounter from '../components/ui/AnimatedCounter';
-import { Users, FileText, AlertCircle, Eye, ShieldAlert, BarChart3, Database, ShieldCheck, Activity } from 'lucide-react';
+import {
+  Users,
+  FileText,
+  AlertCircle,
+  Eye,
+  ShieldAlert,
+  ShieldCheck,
+  Activity,
+  Database,
+  CheckCircle,
+  Flag,
+  XCircle
+} from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon, color, delay }) => (
   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.5 }}>
@@ -19,7 +31,6 @@ const StatCard = ({ title, value, icon: Icon, color, delay }) => (
         </h3>
       </div>
       <div className={`p-4 rounded-xl border relative z-10 backdrop-blur-md ${color.replace('bg-', 'bg-').replace('/10', '/10 text-').replace('border-', 'border-')}`}>
-        {/* Helper text-color extraction from color class is hacky inline, so we rely on parent css or direct styles */}
         <Icon className="h-8 w-8" style={{ color: color === 'bg-cyber-accent' ? '#38BDF8' : color === 'bg-cyber-green' ? '#10B981' : color === 'bg-yellow-500' ? '#EAB308' : '#FFF' }} />
       </div>
     </GlassCard>
@@ -31,6 +42,7 @@ const AdminDashboardPage = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [updatingId, setUpdatingId] = useState(null);
 
   useEffect(() => {
     fetchAdminData();
@@ -56,6 +68,25 @@ const AdminDashboardPage = () => {
     }
   };
 
+  const handleStatusUpdate = async (reportId, newStatus) => {
+    setUpdatingId(reportId);
+    try {
+      const res = await adminService.updateReportStatus(reportId, newStatus);
+      if (res.success) {
+        setReports((prev) =>
+          prev.map((r) => (r._id === reportId ? { ...r, status: newStatus } : r))
+        );
+        // Refresh stats counter
+        const statsRes = await adminService.getStats();
+        if (statsRes.success) setStats(statsRes.data);
+      }
+    } catch (err) {
+      console.error('Failed to update report status:', err);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-grow flex items-center justify-center bg-transparent min-h-[calc(100vh-128px)] relative">
@@ -76,12 +107,12 @@ const AdminDashboardPage = () => {
             <span>Overwatch Command Center</span>
           </h1>
           <p className="text-cyber-muted text-sm mt-2 max-w-xl">
-            Global system ledger and community threat analytics. Access Level: Administrator.
+            Community moderation workflow and threat intelligence ledger. Access Level: Administrator.
           </p>
         </div>
         <div className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center space-x-2 shadow-[0_0_15px_rgba(234,179,8,0.2)]">
           <Database className="w-4 h-4" />
-          <span>Secure Connection</span>
+          <span>Admin Moderation Active</span>
         </div>
       </div>
 
@@ -100,8 +131,8 @@ const AdminDashboardPage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           <StatCard title="Registered Agents" value={stats.users.total} icon={Users} color="bg-cyber-accent" delay={0.1} />
           <StatCard title="Total Threats Logged" value={stats.reports.total} icon={FileText} color="bg-cyber-green" delay={0.2} />
-          <StatCard title="Awaiting Analysis" value={stats.reports.pending} icon={ShieldAlert} color="bg-yellow-500" delay={0.3} />
-          <StatCard title="Threats Neutralized" value={stats.reports.analyzed} icon={ShieldCheck} color="bg-cyber-accent" delay={0.4} />
+          <StatCard title="Verified Threat Intel" value={stats.reports.verified || 0} icon={CheckCircle} color="bg-emerald-500" delay={0.3} />
+          <StatCard title="Flagged Scams" value={stats.reports.flagged || 0} icon={ShieldAlert} color="bg-cyber-red" delay={0.4} />
         </div>
       )}
 
@@ -110,10 +141,10 @@ const AdminDashboardPage = () => {
         <GlassCard hover={false} className="overflow-hidden">
           <div className="p-5 md:p-6 border-b border-cyber-border/50 flex flex-col sm:flex-row items-center justify-between gap-4 bg-cyber-dark/40">
             <h2 className="text-sm font-bold text-white uppercase tracking-widest flex items-center">
-              <Activity className="w-5 h-5 mr-2 text-cyber-accent" /> Global Threat Feed
+              <Activity className="w-5 h-5 mr-2 text-cyber-accent" /> Community Moderation Feed
             </h2>
             <span className="text-xs bg-cyber-dark border border-cyber-border px-3 py-1.5 rounded-md text-cyber-accent font-mono font-semibold">
-              {reports.length} Records Found
+              {reports.length} Submissions Logged
             </span>
           </div>
 
@@ -122,7 +153,7 @@ const AdminDashboardPage = () => {
                <div className="inline-flex p-4 bg-cyber-dark border border-cyber-border rounded-full text-cyber-muted mb-4 shadow-inner">
                  <ShieldCheck className="w-10 h-10" />
                </div>
-               <p className="text-cyber-muted text-lg">No threats detected in the global network.</p>
+               <p className="text-cyber-muted text-lg">No threat reports detected in network database.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -132,9 +163,8 @@ const AdminDashboardPage = () => {
                     <th className="p-5 border-b border-cyber-border/50 font-medium">Incident Details</th>
                     <th className="p-5 border-b border-cyber-border/50 font-medium">Vector</th>
                     <th className="p-5 border-b border-cyber-border/50 font-medium">Reporting Agent</th>
-                    <th className="p-5 border-b border-cyber-border/50 font-medium">Timestamp</th>
-                    <th className="p-5 border-b border-cyber-border/50 font-medium">Clearance</th>
-                    <th className="p-5 border-b border-cyber-border/50 font-medium text-right">Action</th>
+                    <th className="p-5 border-b border-cyber-border/50 font-medium">Status</th>
+                    <th className="p-5 border-b border-cyber-border/50 font-medium text-right">Moderation Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-cyber-border/30">
@@ -153,22 +183,44 @@ const AdminDashboardPage = () => {
                         <div className="text-white font-medium text-xs">{report.user?.name || 'UNKNOWN AGENT'}</div>
                         <div className="text-[10px] font-mono text-cyber-muted mt-1">{report.user?.email || 'CLASSIFIED'}</div>
                       </td>
-                      <td className="p-5 text-cyber-muted text-xs font-mono">
-                        {new Date(report.createdAt).toLocaleDateString(undefined, {
-                          month: 'short', day: 'numeric', year: 'numeric'
-                        })}
-                      </td>
                       <td className="p-5">
                         <StatusBadge status={report.status} />
                       </td>
                       <td className="p-5 text-right">
-                        <Link
-                          to={`/reports/${report._id}`}
-                          className="inline-flex items-center space-x-2 text-xs bg-cyber-dark border border-cyber-border hover:bg-cyber-accent hover:border-cyber-accent hover:text-cyber-dark px-3 py-2 rounded-lg font-bold transition-all shadow-sm"
-                        >
-                          <Eye className="h-4 w-4" />
-                          <span className="hidden sm:inline">Inspect</span>
-                        </Link>
+                        <div className="flex items-center justify-end space-x-1.5">
+                          {/* Moderation Buttons */}
+                          <button
+                            onClick={() => handleStatusUpdate(report._id, 'verified')}
+                            disabled={updatingId === report._id}
+                            title="Verify Report"
+                            className="p-1.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleStatusUpdate(report._id, 'flagged')}
+                            disabled={updatingId === report._id}
+                            title="Flag Scam Campaign"
+                            className="p-1.5 rounded bg-cyber-red/10 border border-cyber-red/30 text-cyber-red hover:bg-cyber-red/20 transition-colors"
+                          >
+                            <Flag className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleStatusUpdate(report._id, 'rejected')}
+                            disabled={updatingId === report._id}
+                            title="Reject Submission"
+                            className="p-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                          </button>
+                          <Link
+                            to={`/reports/${report._id}`}
+                            className="p-1.5 rounded bg-cyber-dark border border-cyber-border text-cyber-accent hover:border-cyber-accent transition-colors ml-1"
+                            title="Inspect Details"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}

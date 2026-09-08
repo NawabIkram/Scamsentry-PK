@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import reportService from '../services/reportService';
 import StatusBadge from '../components/common/StatusBadge';
 import Loader from '../components/common/Loader';
@@ -11,8 +11,6 @@ import {
   Link2,
   Image,
   QrCode,
-  Calendar,
-  Info,
   ShieldAlert,
   ShieldCheck,
   AlertTriangle,
@@ -22,7 +20,10 @@ import {
   Cpu,
   Sparkles,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  Globe,
+  Layers,
+  ExternalLink
 } from 'lucide-react';
 
 const ReportDetailsPage = () => {
@@ -30,10 +31,10 @@ const ReportDetailsPage = () => {
   const navigate = useNavigate();
 
   const [report, setReport] = useState(null);
+  const [similarReports, setSimilarReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
-  const [reAnalyzeSuccess, setReAnalyzeSuccess] = useState(false);
 
   const fetchDetails = async () => {
     setLoading(true);
@@ -42,6 +43,12 @@ const ReportDetailsPage = () => {
       const res = await reportService.getReportById(id);
       if (res.success) {
         setReport(res.data);
+      }
+
+      // Fetch Similar Reports
+      const simRes = await reportService.getSimilarReports(id);
+      if (simRes.success) {
+        setSimilarReports(simRes.data);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Unauthorized or failed to load report details.');
@@ -56,13 +63,10 @@ const ReportDetailsPage = () => {
 
   const handleRunAnalysis = async () => {
     setAnalyzing(true);
-    setReAnalyzeSuccess(false);
     try {
       const res = await reportService.analyzeReport(id);
       if (res.success) {
         setReport(res.data);
-        setReAnalyzeSuccess(true);
-        setTimeout(() => setReAnalyzeSuccess(false), 3000);
       }
     } catch (err) {
       console.error('AI Analysis failed:', err);
@@ -111,6 +115,7 @@ const ReportDetailsPage = () => {
 
   const IconComponent = icons[report.reportType] || MessageSquare;
   const ai = report.aiAnalysis || {};
+  const sb = report.safeBrowsing || {};
   const riskScore = typeof ai.riskScore === 'number' ? ai.riskScore : 65;
 
   const getScoreColor = (score) => {
@@ -142,7 +147,7 @@ const ReportDetailsPage = () => {
           className="inline-flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-cyber-accent hover:text-white bg-cyber-accent/10 border border-cyber-accent/30 hover:border-cyber-accent px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_15px_rgba(56,189,248,0.3)] disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${analyzing ? 'animate-spin' : ''}`} />
-          <span>{analyzing ? 'Analyzing with AI...' : 'Re-Run AI Analysis'}</span>
+          <span>{analyzing ? 'Analyzing...' : 'Re-Run AI & Safety Check'}</span>
         </button>
       </motion.div>
 
@@ -168,6 +173,11 @@ const ReportDetailsPage = () => {
                       {report.reportType} Vector
                     </span>
                     <StatusBadge status={report.status} />
+                    {report.isDuplicate && (
+                      <span className="text-[10px] uppercase font-bold text-cyber-red bg-cyber-red/10 border border-cyber-red/30 px-2 py-0.5 rounded">
+                        Duplicate Pattern
+                      </span>
+                    )}
                   </div>
                   <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-tight">
                     {report.title}
@@ -211,31 +221,42 @@ const ReportDetailsPage = () => {
 
                 {(report.reportType === 'screenshot' || report.reportType === 'qr') && (
                   <div className="border border-cyber-border rounded-xl bg-[#090C15] p-2 overflow-hidden shadow-inner relative group">
-                    <div className="absolute top-4 left-4 bg-cyber-dark/80 backdrop-blur-md px-3 py-1 rounded-md border border-cyber-border text-xs font-mono text-cyber-accent opacity-0 group-hover:opacity-100 transition-opacity">
-                      Visual Evidence Asset
-                    </div>
                     <img
                       src={report.evidenceImage?.url}
                       alt="Scam Evidence Asset"
                       className="rounded-lg w-full max-h-[500px] object-contain"
                     />
-                    <div className="p-3 bg-cyber-dark/50 border-t border-cyber-border mt-2 rounded-b-lg flex justify-between items-center">
-                      <span className="text-xs text-cyber-muted font-mono">{report.evidenceImage?.publicId || 'image-asset'}</span>
-                      <a
-                        href={report.evidenceImage?.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-cyber-accent hover:text-white transition-colors font-semibold flex items-center gap-1"
-                      >
-                        Open Original <ArrowLeft className="w-3 h-3 rotate-135" />
-                      </a>
-                    </div>
                   </div>
                 )}
               </motion.div>
             </div>
 
-            {/* AI Threat Tactics & Indicators Section */}
+            {/* Google Safe Browsing Result Panel */}
+            {sb && sb.checkedAt && (
+              <div className="mb-8 relative z-10 border-t border-cyber-border/40 pt-6">
+                <h3 className="text-xs font-semibold text-cyber-muted uppercase tracking-widest mb-3 flex items-center">
+                  <Globe className="w-4 h-4 mr-2 text-cyber-accent" /> Google Safe Browsing Intelligence
+                </h3>
+                <div className={`p-4 rounded-xl border flex items-center justify-between ${sb.isMalicious ? 'bg-cyber-red/10 border-cyber-red/40 text-cyber-red' : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'}`}>
+                  <div className="flex items-center space-x-3">
+                    {sb.isMalicious ? <ShieldAlert className="w-6 h-6 flex-shrink-0" /> : <ShieldCheck className="w-6 h-6 flex-shrink-0" />}
+                    <div>
+                      <div className="font-bold text-sm">
+                        {sb.isMalicious ? 'Flagged as Malicious / Phishing Site' : 'No Threat Matches in Safe Browsing Database'}
+                      </div>
+                      <div className="text-[11px] opacity-80 font-mono">
+                        Flags: {sb.threatTypes && sb.threatTypes.length > 0 ? sb.threatTypes.join(', ') : 'Clean Domain'}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] uppercase font-mono tracking-wider opacity-60">
+                    Checked {new Date(sb.checkedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* AI Threat Tactics */}
             {ai.tactics && ai.tactics.length > 0 && (
               <div className="mb-6 relative z-10 border-t border-cyber-border/40 pt-6">
                 <h3 className="text-xs font-semibold text-cyber-muted uppercase tracking-widest mb-3 flex items-center">
@@ -278,6 +299,41 @@ const ReportDetailsPage = () => {
             )}
 
           </GlassCard>
+
+          {/* Similar Scam Reports Matching Panel (Module 3 Feature) */}
+          {similarReports.length > 0 && (
+            <GlassCard className="p-6">
+              <h3 className="text-xs font-semibold text-cyber-muted uppercase tracking-widest mb-4 flex items-center">
+                <Layers className="w-4 h-4 mr-2 text-cyber-accent" /> Similar Scam Campaign Matches
+              </h3>
+              <div className="space-y-3">
+                {similarReports.map((item, idx) => (
+                  <div key={idx} className="bg-cyber-dark/60 border border-cyber-border/40 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className="text-[10px] font-mono bg-cyber-accent/10 text-cyber-accent px-2 py-0.5 rounded border border-cyber-accent/20 font-bold">
+                          {item.similarityPercentage}% Match
+                        </span>
+                        {item.isDuplicateMatch && (
+                          <span className="text-[10px] font-mono bg-cyber-red/10 text-cyber-red px-2 py-0.5 rounded border border-cyber-red/20 font-bold">
+                            Duplicate Payload
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm font-bold text-white line-clamp-1">{item.report.title}</div>
+                      <div className="text-xs text-cyber-muted line-clamp-1">{item.report.description}</div>
+                    </div>
+                    <Link
+                      to={`/reports/${item.report._id}`}
+                      className="p-2 text-cyber-accent hover:text-white transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          )}
 
         </div>
 

@@ -15,6 +15,15 @@ const reportService = {
   },
 
   /**
+   * Get public community threat feed
+   * @param {Object} params - Query params (search, type, riskLevel)
+   */
+  getPublicReports: async (params = {}) => {
+    const response = await api.get('/reports/public', { params });
+    return response.data;
+  },
+
+  /**
    * Get all reports submitted by the current authenticated user
    */
   getMyReports: async () => {
@@ -28,6 +37,15 @@ const reportService = {
    */
   getReportById: async (id) => {
     const response = await api.get(`/reports/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Get similar scam reports for similarity matching
+   * @param {string} id - Report ID
+   */
+  getSimilarReports: async (id) => {
+    const response = await api.get(`/reports/${id}/similar`);
     return response.data;
   },
 

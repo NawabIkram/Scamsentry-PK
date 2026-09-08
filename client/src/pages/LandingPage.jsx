@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -8,17 +8,22 @@ import {
   Link as LinkIcon, 
   Image as PhotoIcon, 
   QrCode,
-  Globe,
   AlertTriangle,
   Smartphone,
   CreditCard,
   Briefcase,
   TrendingUp,
-  ShoppingCart
+  ShoppingCart,
+  ShieldAlert,
+  Cpu,
+  Clock,
+  ExternalLink
 } from 'lucide-react';
 import GlassCard from '../components/ui/GlassCard';
 import AnimatedCounter from '../components/ui/AnimatedCounter';
 import ThreatGlobe from '../components/security/ThreatGlobe';
+import reportService from '../services/reportService';
+import StatusBadge from '../components/common/StatusBadge';
 
 const FeatureCard = ({ icon: Icon, title, description, delay = 0 }) => (
   <motion.div
@@ -37,14 +42,44 @@ const FeatureCard = ({ icon: Icon, title, description, delay = 0 }) => (
   </motion.div>
 );
 
-const ScamCategoryCard = ({ icon: Icon, title }) => (
-  <GlassCard className="flex flex-col items-center justify-center p-6 text-center group cursor-pointer hover:border-cyber-accent transition-colors h-40">
+const ScamCategoryCard = ({ icon: Icon, title, onClick }) => (
+  <GlassCard 
+    onClick={onClick}
+    className="flex flex-col items-center justify-center p-6 text-center group cursor-pointer hover:border-cyber-accent transition-colors h-40"
+  >
     <Icon className="w-10 h-10 text-cyber-muted group-hover:text-cyber-accent mb-3 transition-colors group-hover:-translate-y-1 duration-300" />
     <span className="font-semibold text-sm text-cyber-text group-hover:text-white transition-colors">{title}</span>
   </GlassCard>
 );
 
 const LandingPage = () => {
+  const [publicReports, setPublicReports] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loadingFeed, setLoadingFeed] = useState(true);
+
+  const fetchPublicFeed = async (query = '') => {
+    setLoadingFeed(true);
+    try {
+      const res = await reportService.getPublicReports({ search: query, limit: 6 });
+      if (res.success) {
+        setPublicReports(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load public threat feed:', err);
+    } finally {
+      setLoadingFeed(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPublicFeed();
+  }, []);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    fetchPublicFeed(searchTerm);
+  };
+
   return (
     <div className="w-full relative z-10">
       {/* Hero Section */}
@@ -92,13 +127,13 @@ const LandingPage = () => {
                 <ShieldCheck className="w-5 h-5" />
                 Analyze a Scam
               </Link>
-              <Link 
-                to="/report" 
+              <a 
+                href="#public-feed"
                 className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-cyber-card border border-cyber-border text-cyber-text hover:border-cyber-muted transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5"
               >
                 <Search className="w-5 h-5" />
-                Check Suspicious URL
-              </Link>
+                Search Community Feed
+              </a>
             </motion.div>
           </div>
 
@@ -132,14 +167,96 @@ const LandingPage = () => {
              <AnimatedCounter end={91} suffix="%" title="Detection Confidence" />
              <AnimatedCounter end={24} suffix="/7" title="Threat Intelligence" />
           </div>
-          <div className="mt-6 text-center">
-            <span className="text-[10px] text-cyber-muted uppercase tracking-widest bg-cyber-border/30 px-2 py-1 rounded">Demo Intelligence Data</span>
+        </div>
+      </section>
+
+      {/* Community Threat Feed Section (Module 3 Feature) */}
+      <section id="public-feed" className="py-20 relative">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyber-accent uppercase tracking-widest bg-cyber-accent/10 px-3 py-1 rounded border border-cyber-accent/20 mb-3">
+                <Cpu className="w-3.5 h-3.5" /> Community Intelligence Feed
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-white">Recent Scam Reports</h2>
+            </div>
+
+            {/* Search Input Bar */}
+            <form onSubmit={handleSearchSubmit} className="flex items-center space-x-2 max-w-md w-full">
+              <div className="relative flex-grow">
+                <Search className="w-4 h-4 text-cyber-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search scam text, URL, or IBAN..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-cyber-dark/80 border border-cyber-border text-white text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-cyber-accent transition-colors"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-4 py-2.5 bg-cyber-accent text-cyber-dark font-bold rounded-xl hover:bg-cyber-hover transition-colors text-sm"
+              >
+                Search
+              </button>
+            </form>
           </div>
+
+          {/* Cards Grid */}
+          {loadingFeed ? (
+            <div className="text-center py-12 text-cyber-accent animate-pulse">Loading live threat feed...</div>
+          ) : publicReports.length === 0 ? (
+            <GlassCard className="p-12 text-center text-cyber-muted">
+              <ShieldAlert className="w-12 h-12 text-cyber-muted mx-auto mb-3 opacity-50" />
+              <p>No community threat reports found matching your query.</p>
+            </GlassCard>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {publicReports.map((report) => (
+                <GlassCard key={report._id} className="p-6 flex flex-col justify-between hover:border-cyber-accent/50 transition-colors">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-cyber-accent bg-cyber-accent/10 px-2 py-0.5 rounded border border-cyber-accent/20">
+                        {report.reportType}
+                      </span>
+                      <StatusBadge status={report.status} />
+                    </div>
+
+                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-1">{report.title}</h3>
+                    <p className="text-xs text-cyber-muted line-clamp-3 mb-4">{report.description}</p>
+
+                    {/* AI Score Badge */}
+                    {report.aiAnalysis && typeof report.aiAnalysis.riskScore === 'number' && (
+                      <div className="flex items-center justify-between text-xs bg-cyber-dark/60 p-2.5 rounded-lg border border-cyber-border/40 mb-4">
+                        <span className="text-cyber-muted font-mono">Risk Level</span>
+                        <span className={`font-bold ${report.aiAnalysis.riskScore > 75 ? 'text-cyber-red' : 'text-cyber-accent'}`}>
+                          {report.aiAnalysis.riskLevel || 'Analyzed'} ({report.aiAnalysis.riskScore}%)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-cyber-muted border-t border-cyber-border/40 pt-3">
+                    <span className="flex items-center gap-1 font-mono">
+                      <Clock className="w-3 h-3" />
+                      {new Date(report.createdAt).toLocaleDateString()}
+                    </span>
+                    <Link
+                      to={`/reports/${report._id}`}
+                      className="text-cyber-accent hover:text-white font-semibold flex items-center gap-1 transition-colors"
+                    >
+                      View Report <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
       {/* Supported Inputs Section */}
-      <section className="py-24 relative">
+      <section className="py-24 relative bg-cyber-card/20">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16 max-w-2xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-cyber-text mb-4">Comprehensive Threat Analysis</h2>
@@ -192,12 +309,12 @@ const LandingPage = () => {
             </div>
             
             <div className="lg:w-2/3 grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <ScamCategoryCard icon={Smartphone} title="WhatsApp Fraud" />
-              <ScamCategoryCard icon={Briefcase} title="Fake Job Offers" />
-              <ScamCategoryCard icon={CreditCard} title="Mobile Wallet Scams" />
-              <ScamCategoryCard icon={ShieldCheck} title="OTP Theft" />
-              <ScamCategoryCard icon={TrendingUp} title="Investment Scams" />
-              <ScamCategoryCard icon={ShoppingCart} title="Online Shopping" />
+              <ScamCategoryCard onClick={() => fetchPublicFeed('whatsapp')} icon={Smartphone} title="WhatsApp Fraud" />
+              <ScamCategoryCard onClick={() => fetchPublicFeed('job')} icon={Briefcase} title="Fake Job Offers" />
+              <ScamCategoryCard onClick={() => fetchPublicFeed('jazzcash')} icon={CreditCard} title="Mobile Wallet Scams" />
+              <ScamCategoryCard onClick={() => fetchPublicFeed('otp')} icon={ShieldCheck} title="OTP Theft" />
+              <ScamCategoryCard onClick={() => fetchPublicFeed('lottery')} icon={TrendingUp} title="Investment Scams" />
+              <ScamCategoryCard onClick={() => fetchPublicFeed('online')} icon={ShoppingCart} title="Online Shopping" />
             </div>
           </div>
         </div>
