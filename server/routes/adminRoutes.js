@@ -1,6 +1,7 @@
 const express = require('express');
 const {
   getAdminReports,
+  updateReportStatus,
   getAdminUsers,
   getAdminStats
 } = require('../controllers/adminController');
@@ -15,6 +16,7 @@ router.use(authorizeRoles('admin'));
 
 // Admin endpoints
 router.get('/reports', getAdminReports);
+router.patch('/reports/:id/status', updateReportStatus);
 router.get('/users', getAdminUsers);
 router.get('/stats', getAdminStats);
 

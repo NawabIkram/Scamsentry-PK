@@ -64,8 +64,22 @@ const scamReportSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'processing', 'analyzed', 'rejected'],
+      enum: ['pending', 'processing', 'analyzed', 'verified', 'flagged', 'rejected'],
       default: 'pending'
+    },
+    safeBrowsing: {
+      isMalicious: { type: Boolean, default: false },
+      threatTypes: [{ type: String }],
+      checkedAt: { type: Date, default: null }
+    },
+    isDuplicate: {
+      type: Boolean,
+      default: false
+    },
+    duplicateOf: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ScamReport',
+      default: null
     },
     aiAnalysis: {
       riskScore: {
