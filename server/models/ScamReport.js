@@ -66,6 +66,42 @@ const scamReportSchema = new mongoose.Schema(
       type: String,
       enum: ['pending', 'processing', 'analyzed', 'rejected'],
       default: 'pending'
+    },
+    aiAnalysis: {
+      riskScore: {
+        type: Number,
+        min: 0,
+        max: 100,
+        default: null
+      },
+      riskLevel: {
+        type: String,
+        enum: ['Low', 'Medium', 'High', 'Critical'],
+        default: null
+      },
+      summary: {
+        type: String,
+        default: ''
+      },
+      indicatorsOfCompromise: [
+        {
+          type: String
+        }
+      ],
+      tactics: [
+        {
+          type: String
+        }
+      ],
+      recommendedActions: [
+        {
+          type: String
+        }
+      ],
+      analyzedAt: {
+        type: Date,
+        default: null
+      }
     }
   },
   {
