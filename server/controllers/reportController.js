@@ -1,8 +1,9 @@
 const ScamReport = require('../models/ScamReport');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../services/cloudinaryService');
+const { analyzeThreat } = require('../services/aiService');
 
 /**
- * @desc    Create a new scam report
+ * @desc    Create a new scam report & run AI threat analysis
  * @route   POST /api/reports
  * @access  Private
  */
@@ -37,11 +38,51 @@ const createReport = async (req, res, next) => {
       };
     }
 
+    // Run AI Threat Analysis
+    const aiAnalysis = await analyzeThreat(reportData);
+    reportData.aiAnalysis = aiAnalysis;
+    reportData.status = 'analyzed';
+
     const report = await ScamReport.create(reportData);
 
     res.status(201).json({
       success: true,
-      message: 'Report submitted successfully',
+      message: 'Report submitted and analyzed successfully',
+      data: report
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Trigger/Re-run AI threat analysis for a report
+ * @route   POST /api/reports/:id/analyze
+ * @access  Private
+ */
+const analyzeReport = async (req, res, next) => {
+  try {
+    const report = await ScamReport.findById(req.params.id);
+
+    if (!report) {
+      res.status(404);
+      return next(new Error('Scam report not found'));
+    }
+
+    // IDOR Protection
+    if (report.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      res.status(403);
+      return next(new Error('Not authorized to analyze this report'));
+    }
+
+    const aiAnalysis = await analyzeThreat(report);
+    report.aiAnalysis = aiAnalysis;
+    report.status = 'analyzed';
+    await report.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'AI threat analysis completed successfully',
       data: report
     });
   } catch (error) {
@@ -75,7 +116,7 @@ const getMyReports = async (req, res, next) => {
  */
 const getReportById = async (req, res, next) => {
   try {
-    const report = await ScamReport.findById(req.params.id);
+    let report = await ScamReport.findById(req.params.id);
 
     if (!report) {
       res.status(404);
@@ -86,6 +127,14 @@ const getReportById = async (req, res, next) => {
     if (report.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       res.status(403);
       return next(new Error('Not authorized to access this report'));
+    }
+
+    // If report has no aiAnalysis yet, run it on demand
+    if (!report.aiAnalysis || !report.aiAnalysis.riskScore) {
+      const aiAnalysis = await analyzeThreat(report);
+      report.aiAnalysis = aiAnalysis;
+      report.status = 'analyzed';
+      await report.save();
     }
 
     res.status(200).json({
@@ -99,7 +148,7 @@ const getReportById = async (req, res, next) => {
 };
 
 /**
- * @desc    Delete scam report (IDOR Protected, handles Cloudinary deletion in Stage 5)
+ * @desc    Delete scam report (IDOR Protected)
  * @route   DELETE /api/reports/:id
  * @access  Private
  */
@@ -128,7 +177,6 @@ const deleteReport = async (req, res, next) => {
         await deleteFromCloudinary(report.evidenceImage.publicId);
       } catch (err) {
         console.error('Failed to delete image from Cloudinary:', err.message);
-        // We do not block database deletion if Cloudinary deletion fails
       }
     }
 
@@ -145,6 +193,7 @@ const deleteReport = async (req, res, next) => {
 
 module.exports = {
   createReport,
+  analyzeReport,
   getMyReports,
   getReportById,
   deleteReport

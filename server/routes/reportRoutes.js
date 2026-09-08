@@ -1,6 +1,7 @@
 const express = require('express');
 const {
   createReport,
+  analyzeReport,
   getMyReports,
   getReportById,
   deleteReport
@@ -18,8 +19,9 @@ router.use(protect);
 router.post('/', upload.single('evidence'), createReportValidation, createReport);
 router.get('/my', getMyReports);
 
-// Get single details & Delete (IDOR checked internally in controllers)
+// Get single details, Analyze & Delete (IDOR checked internally in controllers)
 router.get('/:id', getReportById);
+router.post('/:id/analyze', analyzeReport);
 router.delete('/:id', deleteReport);
 
 module.exports = router;
